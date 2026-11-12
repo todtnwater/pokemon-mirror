@@ -31,7 +31,7 @@ Web部分はSpring Boot、AI推論部分はPython（FastAPI）で分離した2�
 
 ### システム構成
 
-~~
+~~~
 ブラウザ（Webカメラ）
    │ HTTPS
    ▼
@@ -41,15 +41,15 @@ Cloudflare Tunnel
 mirror：Spring Boot（127.0.0.1 のみで待ち受け）
    ├─ AiClient ──▶ ai：FastAPI + CLIP（127.0.0.1:8091 のみで待ち受け）
    └─ StatsRepository ──▶ MySQL（統計データ）
-~~
+~~~
 
 ### ディレクトリ構成
 
-~~
+~~~
 pokemon-mirror/
 ├── mirror/   Spring Boot（画面・API・統計・レート制限）
 └── ai/       Python AIサーバー（CLIPによる類似度計算）
-~~
+~~~
 
 ### 工夫した点
 
@@ -63,12 +63,12 @@ pokemon-mirror/
 
 #### 1. AIサーバー
 
-~~bash
+~~~bash
 cd ai
 python3 -m venv venv
 venv/bin/pip install -r requirements.txt
 venv/bin/python -m uvicorn pokemon_mirror_ai:app --host 127.0.0.1 --port 8091
-~~
+~~~
 
 #### 2. データベース
 
@@ -78,10 +78,10 @@ venv/bin/python -m uvicorn pokemon_mirror_ai:app --host 127.0.0.1 --port 8091
 
 `mirror/src/main/resources/application.properties` の `${...}` に対応する環境変数（`DB_USERNAME`、`DB_PASSWORD` など）を設定してから実行します。
 
-~~bash
+~~~bash
 cd mirror
 mvn spring-boot:run
-~~
+~~~
 
 ### 注意事項
 
