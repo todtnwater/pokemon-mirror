@@ -1,0 +1,20 @@
+# Java / Maven
+mirror/target/
+.classpath
+.project
+.settings/
+.factorypath
+
+# Python
+ai/venv/
+__pycache__/
+*.pyc
+
+# logs / backups / old files
+*.log
+*.bak
+*_old.pt
+
+# secrets
+.env
+*.env

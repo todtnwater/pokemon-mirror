@@ -1,0 +1,16 @@
+[Unit]
+Description=Pokemon Mirror AI (Python CLIP)
+After=network.target
+
+[Service]
+User=ssk
+WorkingDirectory=/home/ssk/eclipse-workspace/pokemon-mirror-project/ai
+ExecStart=/home/ssk/eclipse-workspace/pokemon-mirror-project/ai/venv/bin/python -m uvicorn pokemon_mirror_ai:app --host 127.0.0.1 --port 8091 --workers 2
+Restart=on-failure
+RestartSec=5
+CPUQuota=400%
+MemoryMax=4G
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

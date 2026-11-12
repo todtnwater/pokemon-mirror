@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>나는 어떤 포켓몬?</title>
+<style>
+  :root {
+    --bg: #f4f4f1;
+    --surface: #ffffff;
+    --text: #1d1d1b;
+    --muted: #6b6b66;
+    --line: #e2e2dc;
+    --accent: #e5483b;
+    --accent-text: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161615;
+      --surface: #222220;
+      --text: #f1f1ec;
+      --muted: #a3a39c;
+      --line: #34342f;
+      --accent: #ff5d4f;
+      --accent-text: #1a0c0a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    line-height: 1.5;
+  }
+  main {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 32px 16px 48px;
+  }
+  h1 { font-size: 28px; margin: 0 0 4px; letter-spacing: -0.02em; }
+  .lead { color: var(--muted); margin: 0 0 24px; }
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 20px;
+  }
+  @media (max-width: 720px) { .layout { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 16px;
+  }
+  .camera {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #000;
+  }
+  .camera video, .camera canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .camera video { object-fit: cover; transform: scaleX(-1); }
+  .camera .placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    text-align: center;
+    color: #d8d8d2;
+  }
+  .controls { display: flex; gap: 8px; margin-top: 12px; }
+  button {
+    font: inherit;
+    font-weight: 600;
+    border-radius: 999px;
+    padding: 10px 20px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  button:disabled { opacity: 0.45; cursor: default; }
+  .status { margin-top: 10px; font-size: 14px; color: var(--muted); min-height: 21px; }
+  .card-art {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 12px;
+    background: #ffffff;
+    border: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .card-art img { width: 88%; height: 88%; object-fit: contain; }
+  .card-art .empty { color: #8a8a84; padding: 24px; text-align: center; }
+  .dex { margin-top: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .name { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; margin: 0; }
+  .types { color: var(--muted); }
+  .others { list-style: none; padding: 0; margin: 14px 0 0; border-top: 1px solid var(--line); }
+  .others li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 15px;
+  }
+  .others .score { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .meta { margin-top: 10px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .ranking { margin-top: 20px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+  @media (max-width: 720px) { .ranking { grid-template-columns: 1fr; } }
+  .ranking h2 { font-size: 17px; margin: 0 0 8px; }
+  .ranking ol { margin: 0; padding-left: 22px; }
+  .ranking li { padding: 4px 0; font-variant-numeric: tabular-nums; }
+  .ranking .count { color: var(--muted); margin-left: 6px; }
+  footer { margin-top: 28px; font-size: 12px; color: var(--muted); }
+  footer p { margin: 4px 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>나는 어떤 포켓몬?</h1>
+  <p class="lead">웹캠에 얼굴을 비추면 1~9세대 포켓몬 1025종 중 가장 닮은 포켓몬을 찾아 줍니다.</p>
+
+  <div class="layout">
+    <section class="panel">
+      <div class="camera">
+        <video id="video" muted playsinline></video>
+        <canvas id="overlay"></canvas>
+        <div class="placeholder" id="placeholder">[시작]을 누르고 카메라 권한을 허용해 주세요.</div>
+      </div>
+      <div class="controls">
+        <button class="primary" id="startButton">시작</button>
+        <button id="stopButton" disabled>중지</button>
+      </div>
+      <div class="status" id="status"></div>
+    </section>
+
+    <section class="panel">
+      <div class="card-art" id="cardArt"><div class="empty">아직 결과가 없어요.</div></div>
+      <div class="dex" id="dex">No.----</div>
+      <p class="name" id="name">???</p>
+      <div class="types" id="types"></div>
+      <ul class="others" id="others"></ul>
+      <div class="meta" id="meta"></div>
+    </section>
+  </div>
+
+  <section class="panel ranking">
+    <div>
+      <h2>오늘 가장 많이 나온 포켓몬</h2>
+      <ol id="rankingToday"><li>아직 기록이 없어요.</li></ol>
+    </div>
+    <div>
+      <h2>전체 기간 TOP 5</h2>
+      <ol id="rankingAll"><li>아직 기록이 없어요.</li></ol>
+    </div>
+  </section>
+
+  <footer>
+    <p>웹캠 영상은 닮은꼴 계산에만 쓰고 서버에 저장하지 않습니다.</p>
+    <p>비공식 팬 프로젝트입니다. Pokémon 및 관련 이름·이미지의 권리는 Nintendo, Creatures Inc., GAME FREAK inc., The Pokémon Company에 있습니다.</p>
+    <p>일러스트: PokeAPI sprites · 도감 데이터: JJMack/pokemon-classification-gen1-9 (CC BY-NC-SA 4.0) · 모델: OpenAI CLIP ViT-B/32</p>
+  </footer>
+</main>
+
+<script>
+  const FRAME_SIZE = 320;        // 서버로 보낼 정사각형 프레임 크기
+  const JPEG_QUALITY = 0.8;
+  const SMOOTHING_FRAMES = 5;    // 최근 몇 프레임 결과를 평균 낼지
+  const MIN_INTERVAL_MS = 200;   // 요청 사이 최소 간격 (초당 최대 5회)
+  const ART_URL = (dex) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${dex}.png`;
+
+  const video = document.getElementById('video');
+  const overlay = document.getElementById('overlay');
+  const placeholder = document.getElementById('placeholder');
+  const startButton = document.getElementById('startButton');
+  const stopButton = document.getElementById('stopButton');
+  const statusText = document.getElementById('status');
+  const cardArt = document.getElementById('cardArt');
+  const dexText = document.getElementById('dex');
+  const nameText = document.getElementById('name');
+  const typesText = document.getElementById('types');
+  const othersList = document.getElementById('others');
+  const metaText = document.getElementById('meta');
+
+  const grabCanvas = document.createElement('canvas');
+  grabCanvas.width = FRAME_SIZE;
+  grabCanvas.height = FRAME_SIZE;
+
+  let stream = null;
+  let running = false;
+  let history = [];
+  let shownDex = null;
+  let requestTimes = [];
+
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  function setStatus(text) {
+    statusText.textContent = text;
+  }
+
+  function grabFrame() {
+    const side = Math.min(video.videoWidth, video.videoHeight);
+    const left = (video.videoWidth - side) / 2;
+    const top = (video.videoHeight - side) / 2;
+    grabCanvas.getContext('2d').drawImage(video, left, top, side, side, 0, 0, FRAME_SIZE, FRAME_SIZE);
+    return new Promise((resolve) => grabCanvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY));
+  }
+
+  function drawBox(box) {
+    const rect = overlay.getBoundingClientRect();
+    overlay.width = Math.round(rect.width);
+    overlay.height = Math.round(rect.height);
+    const context = overlay.getContext('2d');
+    context.clearRect(0, 0, overlay.width, overlay.height);
+    if (!box) {
+      return;
+    }
+    const [x0, y0, x1, y1] = box;
+    // 화면은 거울처럼 좌우가 뒤집혀 있으므로 x 좌표도 뒤집어서 그립니다.
+    const left = (1 - x1) * overlay.width;
+    const top = y0 * overlay.height;
+    context.strokeStyle = '#3ddc84';
+    context.lineWidth = 3;
+    context.strokeRect(left, top, (x1 - x0) * overlay.width, (y1 - y0) * overlay.height);
+  }
+
+  function averageMatches() {
+    const totals = new Map();
+    for (const matches of history) {
+      for (const match of matches) {
+        const entry = totals.get(match.dex) || {match, sum: 0};
+        entry.sum += match.score;
+        totals.set(match.dex, entry);
+      }
+    }
+    return [...totals.values()]
+      .map(({match, sum}) => ({...match, score: sum / history.length}))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
+  }
+
+  function showArt(dex) {
+    if (shownDex === dex) {
+      return;
+    }
+    shownDex = dex;
+    cardArt.replaceChildren();
+    const image = document.createElement('img');
+    image.alt = '';
+    image.src = ART_URL(dex);
+    image.onerror = () => {
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = '그림을 불러오지 못했어요.';
+      cardArt.replaceChildren(empty);
+    };
+    cardArt.appendChild(image);
+  }
+
+  function showResult(top3, fps) {
+    const first = top3[0];
+    showArt(first.dex);
+    dexText.textContent = `No.${String(first.dex).padStart(4, '0')}`;
+    nameText.textContent = first.name;
+    typesText.textContent = first.types;
+
+    othersList.replaceChildren();
+    top3.slice(1).forEach((match, offset) => {
+      const item = document.createElement('li');
+      const label = document.createElement('span');
+      label.textContent = `${offset + 2}. No.${String(match.dex).padStart(4, '0')} ${match.name}`;
+      const score = document.createElement('span');
+      score.className = 'score';
+      score.textContent = match.score.toFixed(2);
+      item.append(label, score);
+      othersList.appendChild(item);
+    });
+    metaText.textContent = `점수 ${first.score.toFixed(2)} · 초당 ${fps.toFixed(1)}회`;
+  }
+
+  function currentFps() {
+    const now = performance.now();
+    requestTimes.push(now);
+    requestTimes = requestTimes.filter((time) => now - time < 3000);
+    return requestTimes.length / 3;
+  }
+
+  async function loop() {
+    while (running) {
+      const started = performance.now();
+      try {
+        const blob = await grabFrame();
+        const response = await fetch('api/match', {
+          method: 'POST',
+          headers: {'Content-Type': 'image/jpeg'},
+          body: blob,
+        });
+        if (response.status === 429) {
+          await sleep(500);
+          continue;
+        }
+        if (!response.ok) {
+          throw new Error(`서버 응답 ${response.status}`);
+        }
+        const data = await response.json();
+        if (!running) {
+          break;
+        }
+        const fps = currentFps();
+        if (!data.found) {
+          history = [];
+          drawBox(null);
+          setStatus('얼굴을 못 찾았어요. 화면 가운데로 와 주세요!');
+        } else {
+          history.push(data.matches);
+          if (history.length > SMOOTHING_FRAMES) {
+            history.shift();
+          }
+          drawBox(data.box);
+          setStatus('');
+          showResult(averageMatches(), fps);
+        }
+      } catch (error) {
+        setStatus(`잠시 연결이 불안정해요. 다시 시도하는 중… (${error.message})`);
+        await sleep(1000);
+      }
+      const wait = MIN_INTERVAL_MS - (performance.now() - started);
+      if (wait > 0) {
+        await sleep(wait);
+      }
+    }
+  }
+
+  async function start() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setStatus('이 브라우저에서는 카메라를 쓸 수 없어요. (https 주소인지 확인해 주세요)');
+      return;
+    }
+    startButton.disabled = true;
+    setStatus('카메라 권한을 기다리는 중…');
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: {width: {ideal: 640}, height: {ideal: 480}, facingMode: 'user'},
+        audio: false,
+      });
+    } catch (error) {
+      startButton.disabled = false;
+      setStatus(`카메라를 켤 수 없어요. 주소창 왼쪽에서 카메라 권한을 허용해 주세요. (${error.name})`);
+      return;
+    }
+    video.srcObject = stream;
+    await video.play();
+    placeholder.hidden = true;
+    stopButton.disabled = false;
+    setStatus('');
+    history = [];
+    requestTimes = [];
+    running = true;
+    loop();
+  }
+
+  function stop() {
+    running = false;
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+      stream = null;
+    }
+    video.srcObject = null;
+    drawBox(null);
+    placeholder.hidden = false;
+    placeholder.textContent = '중지했어요. 다시 하려면 [시작]을 눌러 주세요.';
+    startButton.disabled = false;
+    stopButton.disabled = true;
+    setStatus('');
+  }
+
+  function renderRanking(listId, entries) {
+    const ranking = document.getElementById(listId);
+    ranking.replaceChildren();
+    if (!entries || entries.length === 0) {
+      const item = document.createElement('li');
+      item.textContent = '아직 기록이 없어요.';
+      ranking.appendChild(item);
+      return;
+    }
+    for (const entry of entries) {
+      const item = document.createElement('li');
+      item.textContent = `No.${String(entry.dex).padStart(4, '0')} ${entry.name}`;
+      const count = document.createElement('span');
+      count.className = 'count';
+      count.textContent = `${entry.count}회`;
+      item.appendChild(count);
+      ranking.appendChild(item);
+    }
+  }
+
+  async function loadRanking() {
+    try {
+      const response = await fetch('api/stats');
+      if (!response.ok) {
+        return;
+      }
+      const data = await response.json();
+      renderRanking('rankingToday', data.today);
+      renderRanking('rankingAll', data.top);
+    } catch (error) {
+      // 통계를 못 불러와도 닮은꼴 찾기는 계속 동작합니다.
+    }
+  }
+
+  loadRanking();
+  setInterval(loadRanking, 30000);
+
+  startButton.addEventListener('click', start);
+  stopButton.addEventListener('click', stop);
+</script>
+</body>
+</html>

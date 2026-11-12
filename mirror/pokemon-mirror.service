@@ -1,0 +1,16 @@
+[Unit]
+Description=Pokemon Mirror (Spring Boot)
+After=network.target pokemon-mirror-ai.service
+Wants=pokemon-mirror-ai.service
+
+[Service]
+User=ssk
+WorkingDirectory=/home/ssk/eclipse-workspace/pokemon-mirror-project/mirror
+EnvironmentFile=/etc/pokemon-mirror.env
+ExecStart=/usr/bin/java -Xms64m -Xmx256m -jar /home/ssk/eclipse-workspace/pokemon-mirror-project/mirror/target/pokemon-mirror.jar
+Restart=on-failure
+RestartSec=5
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target
